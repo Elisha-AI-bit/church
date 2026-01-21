@@ -1,4 +1,3 @@
 ---
 deployment:
-  tasks:
-    - /bin/echo "cPanel deployment hook executed successfully"
+  tasks: []
