@@ -1,4 +1,9 @@
 ---
 deployment:
   tasks:
-    - /bin/true
+    - /usr/bin/python3 -m venv /home/uczsilve/venv
+    - source /home/uczsilve/venv/bin/activate
+    - pip install --upgrade pip
+    - pip install -r /home/uczsilve/repositories/church/requirements.txt
+    - python /home/uczsilve/repositories/church/manage.py migrate
+    - python /home/uczsilve/repositories/church/manage.py collectstatic --noinput
