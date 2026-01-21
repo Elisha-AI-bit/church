@@ -1,9 +1,19 @@
 ---
 deployment:
   tasks:
-    - /usr/bin/python3 -m venv /home/uczsilve/venv
+    # Set the deploy path
+    - export DEPLOYPATH=/home/uczsilve/repositories/church
+
+    # Activate virtual environment (create if it doesn't exist)
+    - if [ ! -d /home/uczsilve/venv ]; then python3 -m venv /home/uczsilve/venv; fi
     - source /home/uczsilve/venv/bin/activate
+
+    # Upgrade pip and install dependencies
     - pip install --upgrade pip
-    - pip install -r /home/uczsilve/repositories/church/requirements.txt
-    - python /home/uczsilve/repositories/church/manage.py migrate
-    - python /home/uczsilve/repositories/church/manage.py collectstatic --noinput
+    - pip install -r $DEPLOYPATH/requirements.txt
+
+    # Apply database migrations
+    - python $DEPLOYPATH/manage.py migrate
+
+    # Collect static files
+    - python $DEPLOYPATH/manage.py collectstatic --noinput
