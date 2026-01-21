@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/uczsilve/repositories/church
+    - /bin/cp -R * $DEPLOYPATH
