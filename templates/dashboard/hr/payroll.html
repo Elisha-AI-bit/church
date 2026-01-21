@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Payroll Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Month Selection & Actions -->
+    <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow">
+        <div class="flex items-center space-x-4">
+            <h2 class="text-xl font-bold text-gray-800">Payroll Period:</h2>
+            <input type="month" id="payrollMonth" onchange="loadPayroll()" class="border-gray-300 rounded-md shadow-sm">
+        </div>
+        <div class="space-x-3">
+            <button id="btnReport" onclick="viewReport()"
+                class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-file-alt mr-2"></i> View Report
+            </button>
+            <button id="btnGenerate" onclick="generatePayroll()"
+                class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-magic mr-2"></i> Generate Draft Payroll
+            </button>
+            <button id="btnApprove" onclick="approvePayroll()"
+                class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-check-circle mr-2"></i> Approve & Pay
+            </button>
+            <span id="statusBadge" class="hidden px-3 py-1 rounded-full text-sm font-semibold"></span>
+        </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-5 rounded-lg shadow">
+            <span class="text-gray-500 text-sm font-medium">Total Staff</span>
+            <div class="mt-1 text-2xl font-bold text-gray-900" id="statStaff">0</div>
+        </div>
+        <div class="bg-white p-5 rounded-lg shadow">
+            <span class="text-gray-500 text-sm font-medium">Total Gross Pay</span>
+            <div class="mt-1 text-2xl font-bold text-gray-900" id="statGross">K0.00</div>
+        </div>
+        <div class="bg-white p-5 rounded-lg shadow">
+            <span class="text-gray-500 text-sm font-medium">Total Payout</span>
+            <div class="mt-1 text-2xl font-bold text-ucz-blue" id="statNet">K0.00</div>
+        </div>
+    </div>
+
+    <!-- Payslips Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Payslips</h3>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Basic
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Allowances</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gross
+                        Pay</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">PAYE
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pension/NHIMA</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net Pay
+                    </th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="payslipsTableBody" class="bg-white divide-y divide-gray-200">
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">Select a month to view payroll</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let currentPeriod = null;
+
+    async function loadPayroll() {
+        const monthInput = document.getElementById('payrollMonth').value;
+        if (!monthInput) return;
+
+        // We need to find the ID for this month. 
+        // This is tricky because backend doesn't have a direct "get by month" endpoint unless we filter
+        // But since we want to create if not exists, user explicitly hitting "Generate" handles creation.
+        // For loading, we can just search.
+
+        // Hack: Assuming we filter by month string on backend or just search all list and find client side
+        // Best: Add filtering to PayrollViewSet. For now let's just create a helper to find it.
+
+        // Since we didn't add filter backend, let's just trust generate creates it, and fetch all to find.
+        // Optimization: Add date filter to backend later.
+
+        try {
+            const response = await fetch(`/api/hr/payroll/?month=${monthInput}-01`);
+            const data = await response.json();
+            const periods = data.results ? data.results : data; // Handle pagination
+
+            if (periods.length > 0) {
+                currentPeriod = periods[0];
+            } else {
+                currentPeriod = null;
+            }
+
+            renderUI();
+            if (currentPeriod) {
+                loadPayslips(currentPeriod.id);
+            } else {
+                clearUI();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderUI() {
+        const btnGenerate = document.getElementById('btnGenerate');
+        const btnApprove = document.getElementById('btnApprove');
+        const badge = document.getElementById('statusBadge');
+
+        if (!currentPeriod) {
+            // No record exists
+            btnGenerate.classList.remove('hidden');
+            btnGenerate.textContent = "Generate New Payroll";
+            btnApprove.classList.add('hidden');
+            badge.classList.add('hidden');
+            return;
+        }
+
+        // Record exists
+        const btnReport = document.getElementById('btnReport');
+        badge.classList.remove('hidden');
+
+        // Show report button if payroll exists
+        btnReport.classList.remove('hidden');
+
+        if (currentPeriod.status === 'draft') {
+            badge.textContent = "DRAFT";
+            badge.className = "px-3 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-800";
+            btnGenerate.classList.remove('hidden');
+            btnGenerate.textContent = "Regenerate Draft";
+            btnApprove.classList.remove('hidden');
+        } else if (currentPeriod.status === 'paid') {
+            badge.textContent = "PAID";
+            badge.className = "px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800";
+            btnGenerate.classList.add('hidden');
+            btnApprove.classList.add('hidden');
+        }
+    }
+
+    function clearUI() {
+        document.getElementById('payslipsTableBody').innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">No payroll generated for this month yet.</td></tr>';
+        document.getElementById('statStaff').textContent = '0';
+        document.getElementById('statGross').textContent = 'K0.00';
+        document.getElementById('statNet').textContent = 'K0.00';
+    }
+
+    async function loadPayslips(periodId) {
+        try {
+            const response = await fetch(`/api/hr/payroll/${periodId}/payslips/`);
+            const slips = await response.json();
+
+            const tbody = document.getElementById('payslipsTableBody');
+
+            tbody.innerHTML = slips.map(slip => {
+                const tax = parseFloat(slip.paye_tax);
+                const pension = parseFloat(slip.pension_deduction) + parseFloat(slip.nhima_deduction);
+                const allowances = parseFloat(slip.gross_pay) - parseFloat(slip.basic_salary);
+
+                return `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${slip.employee_name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">${formatCurrency(slip.basic_salary)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">${formatCurrency(allowances)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-800">${formatCurrency(slip.gross_pay)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">-${formatCurrency(tax)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-500">-${formatCurrency(pension)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600">${formatCurrency(slip.net_pay_calculated)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <a href="/api/hr/payslip/${slip.id}/" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                            <i class="fas fa-file-invoice"></i> View
+                        </a>
+                    </td>
+                </tr>
+            `}).join('');
+
+            // Update Stats
+            document.getElementById('statStaff').textContent = slips.length;
+            const totalNet = slips.reduce((sum, s) => sum + parseFloat(s.net_pay_calculated), 0);
+            document.getElementById('statNet').textContent = formatCurrency(totalNet);
+            const totalGross = slips.reduce((sum, s) => sum + parseFloat(s.gross_pay), 0);
+            document.getElementById('statGross').textContent = formatCurrency(totalGross);
+
+        } catch (e) { console.error(e); }
+    }
+
+    async function generatePayroll() {
+        const monthInput = document.getElementById('payrollMonth').value;
+        if (!monthInput) return;
+
+        if (!confirm("Generate payroll for " + monthInput + "? This will overwrite any existing draft.")) return;
+
+        try {
+            const response = await fetch('/api/hr/payroll/generate/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ month: monthInput + "-01" })
+            });
+
+            if (response.ok) {
+                loadPayroll(); // Reload everything
+            } else {
+                const err = await response.json();
+                alert(err.error || "Failed");
+            }
+        } catch (e) { alert("Error generating"); }
+    }
+
+    async function approvePayroll() {
+        if (!currentPeriod) return;
+        if (!confirm("Are you sure you want to Approve & Pay this payroll? This creates a finance expense automatically.")) return;
+
+        try {
+            const response = await fetch(`/api/hr/payroll/${currentPeriod.id}/approve_and_pay/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            if (response.ok) {
+                alert("Success! Payroll marked as paid and expense recorded.");
+                loadPayroll();
+            } else {
+                const err = await response.json();
+                alert(err.error || "Failed");
+            }
+        } catch (e) { alert("Error approving"); }
+    }
+
+    function viewReport() {
+        if (!currentPeriod) return;
+        window.open(`/api/hr/payroll/${currentPeriod.id}/report/`, '_blank');
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function formatCurrency(val) {
+        return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(val);
+    }
+
+    // Initial set month to current
+    document.getElementById('payrollMonth').value = new Date().toISOString().slice(0, 7);
+    loadPayroll();
+</script>
+{% endblock %}

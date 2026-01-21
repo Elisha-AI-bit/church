@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Report - {{ period }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 15px;
+        }
+
+        .header h1 {
+            color: #1e40af;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .report-info {
+            margin-bottom: 25px;
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .report-info h2 {
+            font-size: 18px;
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .info-item {}
+
+        .info-item label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .info-item span {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111;
+        }
+
+        .summary {
+            margin-bottom: 25px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .summary-card {
+            background: #eff6ff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #bfdbfe;
+        }
+
+        .summary-card.highlight {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .summary-card label {
+            font-size: 10px;
+            color: #1e40af;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .summary-card span {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+
+        thead {
+            background: #1e40af;
+            color: white;
+        }
+
+        th {
+            padding: 10px 6px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        th.number {
+            text-align: right;
+        }
+
+        td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        td.number {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        tfoot {
+            background: #f3f4f6;
+            font-weight: 700;
+            border-top: 2px solid #1e40af;
+        }
+
+        tfoot td {
+            padding: 12px 6px;
+            font-size: 12px;
+        }
+
+        .signatures {
+            margin-top: 50px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+        }
+
+        .signature-box {
+            text-align: center;
+        }
+
+        .signature-line {
+            border-top: 2px solid #333;
+            margin-top: 50px;
+            padding-top: 8px;
+        }
+
+        .signature-box label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 15px;
+        }
+
+        @media print {
+            body {
+                padding: 10px;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            @page {
+                margin: 15mm;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>United Church of Zambia</h1>
+        <p>Payroll Report</p>
+    </div>
+
+    <div class="report-info">
+        <h2>Report Information</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Period</label>
+                <span>{{ period.month|date:"F Y" }}</span>
+            </div>
+            <div class="info-item">
+                <label>Status</label>
+                <span>{{ period.get_status_display }}</span>
+            </div>
+            <div class="info-item">
+                <label>Processed By</label>
+                <span>{{ period.processed_by.get_full_name|default:"N/A" }}</span>
+            </div>
+            <div class="info-item">
+                <label>Generated</label>
+                <span>{{ period.created_at|date:"d M Y" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <label>Total Staff</label>
+                <span>{{ payslips|length }}</span>
+            </div>
+            <div class="summary-card">
+                <label>Gross Pay</label>
+                <span>K {{ total_gross|floatformat:2 }}</span>
+            </div>
+            <div class="summary-card">
+                <label>NAPSA</label>
+                <span>K {{ total_napsa|floatformat:2 }}</span>
+            </div>
+            <div class="summary-card">
+                <label>PAYE</label>
+                <span>K {{ total_paye|floatformat:2 }}</span>
+            </div>
+            <div class="summary-card highlight">
+                <label>Net Pay</label>
+                <span>K {{ total_net|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Employee</th>
+                <th>NRC</th>
+                <th>Role</th>
+                <th class="number">Basic</th>
+                <th class="number">Allowances</th>
+                <th class="number">Gross</th>
+                <th class="number">NAPSA</th>
+                <th class="number">NHIMA</th>
+                <th class="number">PAYE</th>
+                <th class="number">Net Pay</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for slip in payslips %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ slip.employee.full_name }}</td>
+                <td>{{ slip.employee.nrc_number|default:"-" }}</td>
+                <td>{{ slip.employee.role }}</td>
+                <td class="number">{{ slip.basic_salary|floatformat:2 }}</td>
+                <td class="number">{{ slip.housing_allowance|add:slip.transport_allowance|add:slip.education_allowance|add:slip.medical_allowance|floatformat:2 }}</td>
+                <td class="number">{{ slip.gross_pay|floatformat:2 }}</td>
+                <td class="number">{{ slip.pension_deduction|floatformat:2 }}</td>
+                <td class="number">{{ slip.nhima_deduction|floatformat:2 }}</td>
+                <td class="number">{{ slip.paye_tax|floatformat:2 }}</td>
+                <td class="number"><strong>{{ slip.net_pay|floatformat:2 }}</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="6" style="text-align: right;">TOTALS:</td>
+                <td class="number">K {{ total_gross|floatformat:2 }}</td>
+                <td class="number">K {{ total_napsa|floatformat:2 }}</td>
+                <td class="number">K {{ total_nhima|floatformat:2 }}</td>
+                <td class="number">K {{ total_paye|floatformat:2 }}</td>
+                <td class="number"><strong>K {{ total_net|floatformat:2 }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="signatures">
+        <div class="signature-box">
+            <div class="signature-line">
+                <label>Prepared By</label>
+            </div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">
+                <label>Reviewed By</label>
+            </div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">
+                <label>Approved By</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>This is a computer-generated document. Generated on {{ period.created_at|date:"d F Y, H:i" }}</p>
+    </div>
+
+    <div class="no-print" style="position: fixed; top: 20px; right: 20px;">
+        <button onclick="window.print()"
+            style="background: #1e40af; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+            Print Report
+        </button>
+        <button onclick="window.close()"
+            style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-left: 10px;">
+            Close
+        </button>
+    </div>
+</body>
+
+</html>

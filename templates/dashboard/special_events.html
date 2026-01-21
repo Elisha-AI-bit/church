@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+
+        #eventDetail,
+        #eventDetail * {
+            visibility: visible;
+        }
+
+        #eventDetail {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            border: none;
+            box-shadow: none;
+        }
+
+        /* Hide buttons in print */
+        button,
+        .no-print {
+            display: none !important;
+        }
+
+        /* Expand grid for print */
+        .lg\:grid-cols-3 {
+            display: block !important;
+        }
+
+        .lg\:col-span-1,
+        .lg\:col-span-2 {
+            width: 100% !important;
+            margin-bottom: 20px;
+        }
+
+        /* Table enhancements for print */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd !important;
+            padding: 8px !important;
+        }
+
+        thead {
+            background-color: #f3f4f6 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+</style>
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center bg-white p-6 rounded-lg shadow-sm">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Special Events</h1>
+            <p class="text-gray-500">Manage Harvest, Holidays, and Special Services</p>
+        </div>
+        <button onclick="document.getElementById('addEventModal').classList.remove('hidden')"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            <i class="fas fa-plus mr-2"></i> New Event
+        </button>
+    </div>
+
+    <!-- Active Events Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="eventsGrid">
+        <!-- Loaded via JS -->
+    </div>
+
+    <!-- Active Event Details (Hidden by default) -->
+    <div id="eventDetail" class="hidden bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <button onclick="closeEventDetail()" class="text-gray-500 hover:text-gray-700 mr-2"><i
+                        class="fas fa-arrow-left"></i></button>
+                <span id="detailTitle" class="text-xl font-bold text-gray-900">Event Name</span>
+            </div>
+            <div class="space-x-2">
+                <button onclick="openDonationModal()"
+                    class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm">
+                    <i class="fas fa-money-bill mr-1"></i> Add Cash
+                </button>
+                <button onclick="document.getElementById('itemsTableBody').scrollIntoView({behavior: 'smooth'})"
+                    class="bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700 text-sm">
+                    <i class="fas fa-box mr-1"></i> Add Goods (See Below)
+                </button>
+                <button onclick="window.print()"
+                    class="bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-800 text-sm">
+                    <i class="fas fa-print mr-1"></i> Print Report
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Stats -->
+            <!-- Stats -->
+            <div class="lg:col-span-1 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <div class="text-xs text-green-700 font-semibold">Cash Donations</div>
+                        <div class="text-xl font-bold text-green-900" id="detailCash">K0.00</div>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <div class="text-xs text-yellow-700 font-semibold">Harvest Sales</div>
+                        <div class="text-xl font-bold text-yellow-900" id="detailSales">K0.00</div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                    <div class="text-sm text-blue-700 font-bold uppercase tracking-wide">Total Cash Handover</div>
+                    <div class="text-3xl font-bold text-blue-900" id="detailTotalCash">K0.00</div>
+                    <p class="text-xs text-blue-600 mt-1">Cash Donations + Harvest Sales</p>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="text-sm text-gray-700">Est. Value of Unsold Items</div>
+                    <div class="text-xl font-bold text-gray-900" id="detailUnsold">K0.00</div>
+                </div>
+            </div>
+
+            <!-- Lists -->
+            <div class="lg:col-span-2">
+                <!-- Items Table (Inline Editing) -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-yellow-50">
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-900">Donated Items / Goods</h2>
+                            <p class="text-sm text-yellow-700">Track items sold or kept. Sales contribute to collection
+                                total.</p>
+                        </div>
+                        <div class="space-x-2">
+                            <span class="text-sm text-gray-500">Sales Total:</span>
+                            <span id="itemsTotal" class="text-xl font-bold text-yellow-600">K0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 flex justify-end">
+                        <button onclick="addItemRow()"
+                            class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded">
+                            <i class="fas fa-plus"></i> Add Item
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item
+                                        Name</th>
+                                    <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty
+                                    </th>
+                                    <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Donor
+                                    </th>
+                                    <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase">Est.
+                                        Value</th>
+                                    <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase">Reserve
+                                        Price</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Status/Comment</th>
+                                    <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sold
+                                        Amount</th>
+                                    <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 bg-gray-50 text-right">
+                        <button onclick="saveItems()"
+                            class="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700 shadow-sm transition">
+                            <i class="fas fa-save mr-2"></i> Save Items
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Event Modal -->
+<div id="addEventModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-bold mb-4">Create Special Event</h3>
+        <form id="createEventForm">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Event Name</label>
+                <input type="text" name="name"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Date</label>
+                <input type="date" name="date"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Type</label>
+                <select name="event_type" class="shadow border rounded w-full py-2 px-3 text-gray-700" required>
+                    <option value="harvest">Harvest (Dry/Green)</option>
+                    <option value="holiday">Holiday</option>
+                    <option value="special">Special Service</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Target Amount (K)</label>
+                <input type="number" name="target_amount"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    value="0">
+            </div>
+            <div class="flex justify-end">
+                <button type="button" onclick="document.getElementById('addEventModal').classList.add('hidden')"
+                    class="mr-2 px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<script>
+    let currentEventId = null;
+
+    document.addEventListener('DOMContentLoaded', loadEvents);
+
+    async function loadEvents() {
+        try {
+            const res = await fetch('/special/api/events/');
+            const data = await res.json();
+            const grid = document.getElementById('eventsGrid');
+            grid.innerHTML = '';
+
+            data.results.forEach(event => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-lg shadow hover:shadow-md cursor-pointer transition border-l-4 " +
+                    (event.event_type === 'harvest' ? 'border-yellow-500' : 'border-blue-500');
+                card.onclick = () => loadEventDetail(event.id);
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-gray-500">${event.event_type}</span>
+                            <h3 class="text-lg font-bold text-gray-900 mt-1">${event.name}</h3>
+                            <p class="text-sm text-gray-600">${event.date}</p>
+                        </div>
+                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Target: K${event.target_amount}</span>
+                    </div>
+                    <div class="mt-4 pt-4 border-t flex justify-between">
+                         <div class="text-center">
+                             <div class="text-xs text-gray-500">Cash</div>
+                             <div class="font-bold text-green-600">K${event.total_cash}</div>
+                         </div>
+                         <div class="text-center">
+                             <div class="text-xs text-gray-500">Goods</div>
+                             <div class="font-bold text-yellow-600">K${event.total_items_value}</div>
+                         </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function loadEventDetail(id) {
+        currentEventId = id;
+        document.getElementById('eventsGrid').classList.add('hidden');
+        document.getElementById('eventDetail').classList.remove('hidden');
+
+        try {
+            const res = await fetch(`/special/api/events/${id}/`);
+            const event = await res.json();
+
+            document.getElementById('detailTitle').textContent = event.name;
+            document.getElementById('detailCash').textContent = 'K' + event.total_cash.toLocaleString();
+            document.getElementById('detailSales').textContent = 'K' + (event.total_sales || 0).toLocaleString();
+            document.getElementById('detailTotalCash').textContent = 'K' + ((event.total_cash || 0) + (event.total_sales || 0)).toLocaleString();
+            document.getElementById('detailUnsold').textContent = 'K' + (event.total_estimated_unsold || 0).toLocaleString();
+
+            // Load Items
+            loadItems(id);
+        } catch (e) { console.error(e); }
+    }
+
+    async function loadItems(eventId) {
+        const res = await fetch(`/special/api/items/?event=${eventId}`);
+        const data = await res.json();
+
+        const tbody = document.getElementById('itemsTableBody');
+        tbody.innerHTML = '';
+
+        data.results.forEach(item => addItemRow(item));
+        updateItemsTotal();
+    }
+
+    function addItemRow(data = {}) {
+        const tbody = document.getElementById('itemsTableBody');
+        const tr = document.createElement('tr');
+        tr.dataset.id = data.id || ''; // Store ID for updates
+
+        tr.innerHTML = `
+            <td class="px-2 py-2"><input type="text" class="item-name w-full border-gray-300 rounded-md text-sm" value="${data.item_name || ''}" placeholder="Item Name"></td>
+            <td class="px-2 py-2"><input type="number" step="0.01" class="item-qty w-16 text-right border-gray-300 rounded-md text-sm" value="${data.quantity || 1}"></td>
+            <td class="px-2 py-2"><input type="text" class="item-donor w-full border-gray-300 rounded-md text-sm" value="${data.donor_name || ''}" placeholder="Donor"></td>
+            <td class="px-2 py-2"><input type="number" step="0.01" class="item-est w-full text-right border-gray-300 rounded-md text-sm" value="${data.estimated_value || 0}"></td>
+            <td class="px-2 py-2"><input type="number" step="0.01" class="item-res w-full text-right border-gray-300 rounded-md text-sm" value="${data.reserve_price || 0}"></td>
+            <td class="px-2 py-2">
+                <select class="item-status w-full border-gray-300 rounded-md text-sm" onchange="toggleSoldInput(this)">
+                    <option value="received" ${!data.status || data.status === 'received' ? 'selected' : ''}>Received</option>
+                    <option value="sold" ${data.status === 'sold' ? 'selected' : ''}>Sold</option>
+                    <option value="failed" ${data.status === 'failed' ? 'selected' : ''}>Failed</option>
+                    <option value="donated" ${data.status === 'donated' ? 'selected' : ''}>Donated</option>
+                    <option value="kept" ${data.status === 'kept' ? 'selected' : ''}>Kept</option>
+                </select>
+            </td>
+            <td class="px-2 py-2">
+                <input type="number" step="0.01" class="item-sold w-full text-right border-gray-300 rounded-md text-sm ${data.status !== 'sold' ? 'bg-gray-100' : ''}" 
+                       value="${data.sold_amount || 0}" ${data.status !== 'sold' ? 'disabled' : ''}>
+            </td>
+            <td class="px-2 py-2 text-center">
+                <button type="button" onclick="this.closest('tr').remove(); updateItemsTotal();" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        tr.querySelectorAll('input, select').forEach(el => el.addEventListener('input', updateItemsTotal));
+        updateItemsTotal();
+    }
+
+    function toggleSoldInput(select) {
+        const row = select.closest('tr');
+        const soldInput = row.querySelector('.item-sold');
+        if (select.value === 'sold') {
+            soldInput.disabled = false;
+            soldInput.classList.remove('bg-gray-100');
+        } else {
+            soldInput.disabled = true;
+            soldInput.classList.add('bg-gray-100');
+            soldInput.value = 0;
+        }
+        updateItemsTotal();
+    }
+
+    function updateItemsTotal() {
+        let total = 0;
+        document.querySelectorAll('#itemsTableBody tr').forEach(row => {
+            const soldInput = row.querySelector('.item-sold');
+            if (soldInput && !soldInput.disabled) {
+                total += parseFloat(soldInput.value) || 0;
+            }
+        });
+        if (document.getElementById('itemsTotal')) {
+            document.getElementById('itemsTotal').textContent = 'K' + total.toFixed(2);
+        }
+    }
+
+    async function saveItems() {
+        if (!currentEventId) return;
+
+        const items = [];
+        document.querySelectorAll('#itemsTableBody tr').forEach(row => {
+            items.push({
+                id: row.dataset.id || null, // Pass ID for updates
+                item_name: row.querySelector('.item-name').value,
+                quantity: row.querySelector('.item-qty').value,
+                donor_name: row.querySelector('.item-donor').value,
+                estimated_value: row.querySelector('.item-est').value,
+                reserve_price: row.querySelector('.item-res').value,
+                status: row.querySelector('.item-status').value,
+                sold_amount: row.querySelector('.item-sold').value
+            });
+        });
+
+        try {
+            const res = await fetch(`/special/api/events/${currentEventId}/update_items/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ items: items })
+            });
+
+            if (res.ok) {
+                alert('Items saved successfully!');
+                loadEventDetail(currentEventId);
+            } else {
+                alert('Error saving items');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function closeEventDetail() {
+        document.getElementById('eventsGrid').classList.remove('hidden');
+        document.getElementById('eventDetail').classList.add('hidden');
+        loadEvents(); // refresh totals
+    }
+
+    document.getElementById('createEventForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = new FormData(e.target);
+        const json = Object.fromEntries(data.entries());
+        try {
+            await fetch('/special/api/events/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify(json)
+            });
+            document.getElementById('addEventModal').classList.add('hidden');
+            loadEvents();
+        } catch (e) { console.error(e); }
+    };
+
+    // Helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}
+```

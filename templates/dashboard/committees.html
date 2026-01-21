@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Committees Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Committees Management</h2>
+            <p class="text-gray-600">Manage church committees and their members</p>
+        </div>
+    </div>
+
+    <div id="committeesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Committees will be loaded via JavaScript -->
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function loadCommittees() {
+        try {
+            const response = await fetch('/api/committees/committees/');
+            const data = await response.json();
+            displayCommittees(data.results);
+        } catch (error) {
+            console.error('Error loading committees:', error);
+        }
+    }
+
+    function displayCommittees(committees) {
+        const container = document.getElementById('committeesContainer');
+        if (committees.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-gray-500">No committees found. Add committees in the admin panel.</p></div>';
+            return;
+        }
+        container.innerHTML = committees.map(committee => `
+            <div class="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-ucz-blue rounded-lg flex items-center justify-center">
+                        <i class="fas fa-users-cog text-white text-xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">${committee.name}</h3>
+                <p class="text-sm text-gray-500 mb-4">${committee.description || 'No description'}</p>
+                ${committee.meeting_schedule ? `<p class="text-xs text-gray-600 mb-4"><i class="fas fa-calendar mr-1"></i> ${committee.meeting_schedule}</p>` : ''}
+                <a href="/admin/committees/committee/${committee.id}/change/" class="text-ucz-blue hover:text-blue-900 text-sm font-medium">
+                    View Details →
+                </a>
+            </div>
+        `).join('');
+    }
+
+    loadCommittees();
+</script>
+{% endblock %}

@@ -1,0 +1,729 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Budget Management Module{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header: Controls & Summary -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-2xl shadow-lg gap-4">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 bg-ucz-blue/10 rounded-xl flex items-center justify-center">
+                <i class="fas fa-file-invoice-dollar text-ucz-blue text-2xl"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Budget Management</h2>
+                <div class="flex items-center space-x-2 mt-1">
+                    <select id="yearSelect" onchange="loadBudget()"
+                        class="text-sm border-gray-300 rounded-lg focus:ring-ucz-blue focus:border-ucz-blue py-1">
+                        <!-- Years populated by JS -->
+                    </select>
+                    <span id="budgetStatusBadge"
+                        class="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+                        Unknown
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <button onclick="createBudget()"
+                class="flex items-center px-4 py-2 bg-ucz-blue text-white rounded-lg hover:bg-blue-700 transition shadow-sm">
+                <i class="fas fa-plus mr-2"></i> New Budget
+            </button>
+            <div class="h-8 w-px bg-gray-200 mx-1 hidden md:block"></div>
+
+            <button onclick="downloadBudgetTemplate()"
+                class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                <i class="fas fa-download mr-2 text-green-600"></i> Template
+            </button>
+
+            <button onclick="openImportModal()"
+                class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                <i class="fas fa-file-import mr-2 text-orange-600"></i> Import
+            </button>
+
+            <button onclick="exportToPDF()"
+                class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                <i class="fas fa-file-pdf mr-2 text-red-600"></i> Export
+            </button>
+
+            <div class="h-8 w-px bg-gray-200 mx-1 hidden md:block"></div>
+
+            <button id="lockBtn" onclick="toggleLock()"
+                class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                <i id="lockIcon" class="fas fa-lock mr-2"></i> <span id="lockText">Lock Budget</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats for Current Year -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-ucz-blue">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Annual Income Target</p>
+            <h3 id="statTotalIncome" class="text-2xl font-black text-gray-900">K0.00</h3>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-ucz-red">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Annual Expenditure</p>
+            <h3 id="statTotalExpense" class="text-2xl font-black text-gray-900">K0.00</h3>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-yellow-500">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Monthly Burn Rate</p>
+            <h3 id="statBurnRate" class="text-2xl font-black text-gray-900">K0.00</h3>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-green-500">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Net Surplus/Deficit</p>
+            <h3 id="statNetPosition" class="text-2xl font-black text-green-600">K0.00</h3>
+        </div>
+    </div>
+
+    <!-- Main Content Area with Navigation -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div class="flex border-b border-gray-100 overflow-x-auto">
+            <button onclick="switchTab('income')" id="tab-income"
+                class="px-6 py-4 text-sm font-bold text-ucz-blue border-b-2 border-ucz-blue transition-all whitespace-nowrap">
+                <i class="fas fa-hand-holding-usd mr-2"></i>Income Sources
+            </button>
+            <button onclick="switchTab('expenses')" id="tab-expenses"
+                class="px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all whitespace-nowrap">
+                <i class="fas fa-spending-card mr-2"></i>Expenditure Lines
+            </button>
+            <button onclick="switchTab('units')" id="tab-units"
+                class="px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all whitespace-nowrap">
+                <i class="fas fa-sitemap mr-2"></i>Unit Budgets
+            </button>
+            <button onclick="switchTab('audit')" id="tab-audit"
+                class="px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all whitespace-nowrap">
+                <i class="fas fa-history mr-2"></i>Audit Trail
+            </button>
+        </div>
+
+        <div class="p-6">
+            <!-- Income Tab Content -->
+            <div id="panel-income" class="tab-panel">
+                <div class="overflow-x-auto -mx-6">
+                    <table class="w-full text-left whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100">
+                                <th
+                                    class="px-6 py-4 text-xs font-bold text-gray-500 uppercase sticky left-0 bg-gray-50">
+                                    Category</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Jan</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Feb</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Mar</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Apr</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">May</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Jun</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Jul</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Aug</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Sep</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Oct</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Nov</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Dec</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right bg-blue-50">
+                                    Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incomeTbody" class="divide-y divide-gray-50">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Expense Tab Content -->
+            <div id="panel-expenses" class="tab-panel hidden">
+                <div id="expenseTypeFilters" class="flex flex-wrap gap-2 mb-6">
+                    <!-- Filters defined by ExpenseCategory.CATEGORY_TYPES -->
+                </div>
+                <div class="overflow-x-auto -mx-6">
+                    <table class="w-full text-left whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100">
+                                <th
+                                    class="px-6 py-4 text-xs font-bold text-gray-500 uppercase sticky left-0 bg-gray-50">
+                                    Description</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Jan</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Feb</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Mar</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Apr</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">May</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Jun</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Jul</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Aug</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Sep</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Oct</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Nov</th>
+                                <th class="px-3 py-4 text-xs font-bold text-gray-500 uppercase text-center">Dec</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right bg-red-50">
+                                    Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTbody" class="divide-y divide-gray-50">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Units Tab Content -->
+            <div id="panel-units" class="tab-panel hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="col-span-1 border-r border-gray-100 pr-4">
+                        <h4 class="text-sm font-bold text-gray-900 mb-4">Organizational Units</h4>
+                        <div id="unitList" class="space-y-1">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="col-span-2">
+                        <div id="unitDetail" class="hidden">
+                            <h4 id="selectedUnitName" class="text-lg font-bold text-gray-900 mb-2">Unit Name</h4>
+                            <div class="bg-gray-50 p-4 rounded-xl mb-6">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-white p-3 rounded-lg shadow-sm">
+                                        <p class="text-xs text-gray-500 font-bold uppercase">Allocated Budget</p>
+                                        <p id="unitAllocated" class="text-xl font-black text-ucz-blue">K0.00</p>
+                                    </div>
+                                    <div class="bg-white p-3 rounded-lg shadow-sm">
+                                        <p class="text-xs text-gray-500 font-bold uppercase">Utilization</p>
+                                        <p id="unitUtilization" class="text-xl font-black text-gray-400">0.0%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <table class="w-full text-left">
+                                <thead class="border-b border-gray-100">
+                                    <tr>
+                                        <th class="py-3 text-xs font-bold text-gray-500 uppercase">Expense Item</th>
+                                        <th class="py-3 text-right text-xs font-bold text-gray-500 uppercase">Annual
+                                            Allocation</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unitItemsTbody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="unitEmpty" class="flex flex-col items-center justify-center py-20 text-gray-400">
+                            <i class="fas fa-sitemap text-4xl mb-4 opacity-20"></i>
+                            <p>Select a department, group, or section to view allocations</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit Tab Content -->
+            <div id="panel-audit" class="tab-panel hidden">
+                <div class="overflow-hidden border border-gray-100 rounded-xl">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Timestamp</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">User</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Action</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Changes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditTbody" class="divide-y divide-gray-50 text-sm">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="importModal" class="fixed inset-0 bg-ucz-black/60 backdrop-blur-sm hidden items-center justify-center z-[100]">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full animate-slide-in">
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Import Budget Data</h3>
+        <p class="text-sm text-gray-500 mb-6">Upload a CSV file to bulk update budget items for the selected year.
+            <button onclick="downloadBudgetTemplate()" class="text-ucz-blue font-bold hover:underline">Download
+                Template</button>
+        </p>
+        <form id="importForm" onsubmit="submitImport(event)" class="space-y-4">
+            <div class="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-ucz-blue transition-colors cursor-pointer"
+                onclick="document.getElementById('csvPicker').click()">
+                <i class="fas fa-cloud-upload-alt text-4xl text-gray-300 mb-3"></i>
+                <p class="text-sm font-medium text-gray-600">Click to browse or drag and drop</p>
+                <p class="text-xs text-gray-400 mt-1">.CSV files only</p>
+                <input id="csvPicker" type="file" name="file" accept=".csv" required class="hidden">
+            </div>
+            <div class="flex justify-end space-x-3 mt-8">
+                <button type="button" onclick="closeImportModal()"
+                    class="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition">Cancel</button>
+                <button type="submit"
+                    class="px-6 py-2 bg-ucz-blue text-white font-bold rounded-lg hover:shadow-lg transition">Process
+                    Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    let currentBudget = null;
+    let departments = [];
+    let incomeCategories = [];
+    let expenseCategories = [];
+    let currentTab = 'income';
+
+    async function init() {
+        const yearSelect = document.getElementById('yearSelect');
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear - 2; y <= currentYear + 5; y++) {
+            yearSelect.add(new Option(y, y));
+        }
+        yearSelect.value = currentYear;
+
+        // Fetch departments and categories
+        await fetchUnits();
+        await fetchCategories();
+        await loadBudget();
+    }
+
+    async function fetchUnits() {
+        try {
+            const resp = await fetch('/api/administration/departments/');
+            departments = await resp.json();
+            renderUnitList();
+        } catch (e) { console.error("Error fetching departments", e); }
+    }
+
+    async function fetchCategories() {
+        try {
+            const [iR, eR] = await Promise.all([
+                fetch('/api/finance/income-categories/'),
+                fetch('/api/finance/expense-categories/')
+            ]);
+            const iData = await iR.json();
+            const eData = await eR.json();
+            incomeCategories = Array.isArray(iData) ? iData : iData.results || [];
+            expenseCategories = Array.isArray(eData) ? eData : eData.results || [];
+        } catch (e) { console.error("Error fetching categories", e); }
+    }
+
+    async function loadBudget() {
+        const year = document.getElementById('yearSelect').value;
+        try {
+            const response = await fetch(`/api/finance/budgets/?year=${year}`);
+            const results = await response.json();
+
+            // Check if results is an array or object
+            const list = Array.isArray(results) ? results : results.results;
+            currentBudget = list.find(b => b.year == year);
+
+            if (currentBudget) {
+                renderAll();
+            } else {
+                currentBudget = null;
+                resetUI();
+            }
+        } catch (e) {
+            toast('error', 'Failed to connect to the finance server');
+        }
+    }
+
+    function renderAll() {
+        updateStats();
+        updateStatusDisplay();
+        renderIncome();
+        renderExpenses();
+        renderAudit();
+        if (currentTab === 'units') renderUnitDetail();
+    }
+
+    function updateStats() {
+        const income = currentBudget.income_items.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+        const expense = currentBudget.expense_items.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+        const net = income - expense;
+        const burn = expense / 12;
+
+        document.getElementById('statTotalIncome').textContent = formatK(income);
+        document.getElementById('statTotalExpense').textContent = formatK(expense);
+        document.getElementById('statBurnRate').textContent = formatK(burn || 0);
+
+        const netEl = document.getElementById('statNetPosition');
+        netEl.textContent = formatK(net);
+        netEl.className = `text-2xl font-black ${net >= 0 ? 'text-green-600' : 'text-ucz-red'}`;
+    }
+
+    function updateStatusDisplay() {
+        const badge = document.getElementById('budgetStatusBadge');
+        badge.textContent = currentBudget.status_display;
+
+        const lockBtn = document.getElementById('lockBtn');
+        const lockIcon = document.getElementById('lockIcon');
+        const lockText = document.getElementById('lockText');
+
+        if (currentBudget.is_locked) {
+            badge.className = "px-2 py-0.5 rounded-full text-xs font-bold bg-ucz-red/10 text-ucz-red";
+            lockIcon.className = "fas fa-lock-open mr-2";
+            lockText.textContent = "Unlock Budget";
+        } else {
+            badge.className = "px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-600";
+            lockIcon.className = "fas fa-lock mr-2";
+            lockText.textContent = "Lock Budget";
+        }
+    }
+
+    function renderIncome() {
+        const tbody = document.getElementById('incomeTbody');
+        tbody.innerHTML = currentBudget.income_items.map(item => `
+            <tr>
+                <td class="px-6 py-4 font-bold text-gray-900 sticky left-0 bg-white border-r border-gray-50">${item.category_name}</td>
+                ${months.map(m => `
+                    <td class="px-1 py-4 text-center">
+                        <input type="number" step="0.01" value="${item[m]}" 
+                            onchange="updateBudgetLine('income', ${item.id}, '${m}', this.value)"
+                            ${currentBudget.is_locked ? 'disabled' : ''}
+                            class="w-20 text-right text-xs bg-transparent border-transparent focus:border-ucz-blue rounded transition">
+                    </td>
+                `).join('')}
+                <td class="px-6 py-4 text-right font-black text-ucz-blue bg-blue-50/50">${formatK(item.total)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderExpenses() {
+        const tbody = document.getElementById('expenseTbody');
+        tbody.innerHTML = currentBudget.expense_items.map(item => `
+            <tr>
+                <td class="px-6 py-4 font-bold text-gray-900 sticky left-0 bg-white border-r border-gray-50">
+                    <div>
+                        ${item.category_name}
+                        <p class="text-[10px] text-gray-400 font-normal mt-0.5">${item.category_group.toUpperCase()}</p>
+                    </div>
+                </td>
+                ${months.map(m => `
+                    <td class="px-1 py-4 text-center">
+                        <input type="number" step="0.01" value="${item[m]}" 
+                            onchange="updateBudgetLine('expense', ${item.id}, '${m}', this.value)"
+                            ${currentBudget.is_locked ? 'disabled' : ''}
+                            class="w-20 text-right text-xs bg-transparent border-transparent focus:border-ucz-blue rounded transition">
+                    </td>
+                `).join('')}
+                <td class="px-6 py-4 text-right font-black text-ucz-red bg-red-50/50">${formatK(item.total)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderAudit() {
+        const tbody = document.getElementById('auditTbody');
+        tbody.innerHTML = (currentBudget.audit_logs || []).map(log => `
+            <tr>
+                <td class="px-6 py-4 text-gray-500">${new Date(log.timestamp).toLocaleString()}</td>
+                <td class="px-6 py-4 font-medium text-gray-900">${log.user_name || 'System'}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase ${getAuditColor(log.action)}">
+                        ${log.action_display}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-xs text-gray-600">
+                    <p class="truncate max-w-xs" title='${JSON.stringify(log.changes)}'>${Object.keys(log.changes).join(', ')}</p>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderUnitList() {
+        const list = document.getElementById('unitList');
+        list.innerHTML = departments.map(d => `
+            <button onclick="selectUnit('dept', ${d.id}, '${d.name}')" 
+                class="w-full text-left px-4 py-2 text-sm rounded-lg hover:bg-gray-50 transition flex items-center group">
+                <i class="fas fa-building mr-3 text-gray-300 group-hover:text-ucz-blue"></i>
+                <span class="font-medium text-gray-600 group-hover:text-gray-900">${d.name}</span>
+            </button>
+        `).join('');
+    }
+
+    let activeUnit = null;
+    function selectUnit(type, id, name) {
+        activeUnit = { type, id, name };
+        document.getElementById('unitEmpty').classList.add('hidden');
+        document.getElementById('unitDetail').classList.remove('hidden');
+        document.getElementById('selectedUnitName').textContent = name;
+        renderUnitDetail();
+    }
+
+    function renderUnitDetail() {
+        if (!activeUnit || !currentBudget) return;
+
+        const items = currentBudget.expense_items.filter(i => i.department == activeUnit.id);
+        const total = items.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+
+        document.getElementById('unitAllocated').textContent = formatK(total);
+        document.getElementById('unitItemsTbody').innerHTML = items.map(i => `
+            <tr class="border-b border-gray-50">
+                <td class="py-3 text-sm font-medium text-gray-700">${i.category_name}</td>
+                <td class="py-3 text-right font-black text-ucz-blue">${formatK(i.total)}</td>
+            </tr>
+        `).join('');
+    }
+
+    async function toggleLock() {
+        const action = currentBudget.is_locked ? 'unlock' : 'lock';
+        if (!confirm(`Are you sure you want to ${action} the ${currentBudget.year} budget?`)) return;
+
+        try {
+            const resp = await fetch(`/api/finance/budgets/${currentBudget.id}/${action}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            if (resp.ok) {
+                currentBudget = await resp.json();
+                renderAll();
+                toast('success', `Budget ${action}ed successfully`);
+            }
+        } catch (e) { toast('error', 'Action failed'); }
+    }
+
+    async function updateBudgetLine(type, id, month, value) {
+        try {
+            const resp = await fetch(`/api/finance/budgets/${currentBudget.id}/update_item/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ type, id, [month]: value })
+            });
+            if (resp.ok) {
+                // To avoid full reload, update local state
+                const data = await resp.json();
+                if (type === 'income') {
+                    const idx = currentBudget.income_items.findIndex(i => i.id == id);
+                    currentBudget.income_items[idx] = data;
+                } else {
+                    const idx = currentBudget.expense_items.findIndex(i => i.id == id);
+                    currentBudget.expense_items[idx] = data;
+                }
+                updateStats();
+                // We re-render the row totals easily
+                if (type === 'income') renderIncome(); else renderExpenses();
+            }
+        } catch (e) { toast('error', 'Update failed'); }
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+        document.getElementById(`panel-${tab}`).classList.remove('hidden');
+
+        document.querySelectorAll('nav button').forEach(b => {
+            b.classList.remove('text-ucz-blue', 'border-ucz-blue');
+            b.classList.add('text-gray-500', 'border-transparent');
+            b.classList.add('font-medium');
+            b.classList.remove('font-bold');
+        });
+        const active = document.getElementById(`tab-${tab}`);
+        active.classList.add('text-ucz-blue', 'border-ucz-blue', 'font-bold');
+        active.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+    }
+
+    function formatK(val) {
+        const num = parseFloat(val);
+        return new Intl.NumberFormat('en-ZM', { style: 'currency', currency: 'ZMW' }).format(isNaN(num) ? 0 : num);
+    }
+
+    function getAuditColor(action) {
+        const colors = {
+            'create': 'bg-green-100 text-green-700',
+            'update': 'bg-blue-100 text-blue-700',
+            'delete': 'bg-red-100 text-red-700',
+            'lock': 'bg-orange-100 text-orange-700',
+            'unlock': 'bg-gray-100 text-gray-700'
+        };
+        return colors[action] || 'bg-gray-100 text-gray-700';
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function openImportModal() { document.getElementById('importModal').classList.remove('hidden'); document.getElementById('importModal').classList.add('flex'); }
+    function closeImportModal() { document.getElementById('importModal').classList.add('hidden'); document.getElementById('importModal').classList.remove('flex'); }
+
+    function resetUI() {
+        document.getElementById('incomeTbody').innerHTML = '<tr><td colspan="14" class="py-20 text-center text-gray-400">No budget found for this year. Click "New Budget" to start.</td></tr>';
+        document.getElementById('expenseTbody').innerHTML = '';
+        document.getElementById('statTotalIncome').textContent = 'K0.00';
+        document.getElementById('statTotalExpense').textContent = 'K0.00';
+        document.getElementById('statNetPosition').textContent = 'K0.00';
+        document.getElementById('statBurnRate').textContent = 'K0.00';
+        document.getElementById('budgetStatusBadge').textContent = 'None';
+    }
+
+    function downloadBudgetTemplate() {
+        try {
+            const headers = ['Year', 'Type', 'Category', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const year = document.getElementById('yearSelect').value;
+
+            // Helper to escape CSV values
+            const f = (val) => {
+                const str = (val === null || val === undefined) ? '0' : val.toString();
+                return `"${str.replace(/"/g, '""')}"`;
+            };
+
+            let csvRows = [headers.join(',')];
+
+            if (currentBudget && currentBudget.year == year) {
+                // Use existing budget items
+                (currentBudget.income_items || []).forEach(item => {
+                    csvRows.push([f(year), f('Income'), f(item.category_name || ''), f(item.jan), f(item.feb), f(item.mar), f(item.apr), f(item.may), f(item.jun), f(item.jul), f(item.aug), f(item.sep), f(item.oct), f(item.nov), f(item.dec)].join(','));
+                });
+                (currentBudget.expense_items || []).forEach(item => {
+                    csvRows.push([f(year), f('Expense'), f(item.category_name || ''), f(item.jan), f(item.feb), f(item.mar), f(item.apr), f(item.may), f(item.jun), f(item.jul), f(item.aug), f(item.sep), f(item.oct), f(item.nov), f(item.dec)].join(','));
+                });
+            } else {
+                // Fallback to active categories
+                incomeCategories.forEach(c => {
+                    csvRows.push([f(year), f('Income'), f(c.name), '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'].join(','));
+                });
+                expenseCategories.forEach(c => {
+                    csvRows.push([f(year), f('Expense'), f(c.name), '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'].join(','));
+                });
+                if (incomeCategories.length === 0 && expenseCategories.length === 0) {
+                    toast('error', 'No categories found. Please setup categories first.');
+                    return;
+                }
+            }
+
+            const csvContent = "\ufeff" + csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `budget_template_${year}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast('success', 'Template generated successfully');
+        } catch (err) {
+            console.error('CSV Generation Error:', err);
+            toast('error', 'Failed to generate template: ' + err.message);
+        }
+    }
+
+    async function submitImport(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Uploading...';
+
+        try {
+            const response = await fetch('/api/finance/budgets/import_csv/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert(`Import Successful!\nImported: ${result.imported}\nErrors: ${result.errors.length}`);
+                if (result.errors.length > 0) {
+                    console.error('Import Errors:', result.errors);
+                }
+                closeImportModal();
+                loadBudget();
+            } else {
+                alert('Import failed: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Import error:', error);
+            alert('Error connecting to server');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Process Import';
+        }
+    }
+
+    async function createBudget() {
+        const year = document.getElementById('yearSelect').value;
+        if (!confirm(`Create a new budget for ${year}?`)) return;
+
+        try {
+            const resp = await fetch('/api/finance/budgets/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ year })
+            });
+
+            if (resp.ok) {
+                currentBudget = await resp.json();
+                renderAll();
+                toast('success', 'Budget created successfully');
+            } else {
+                const err = await resp.json();
+                toast('error', err.error || 'Failed to create budget');
+            }
+        } catch (e) {
+            toast('error', 'Connection error');
+        }
+    }
+
+    async function exportToPDF() {
+        if (!currentBudget) return;
+        toast('info', 'Generating PDF report...');
+        window.open(`/api/reports/report/budget_vs_actual/?year=${currentBudget.year}&format=pdf`, '_blank');
+    }
+
+    function toast(type, msg) {
+        const colors = {
+            'success': 'bg-green-600',
+            'error': 'bg-ucz-red',
+            'info': 'bg-ucz-blue'
+        };
+        const el = document.createElement('div');
+        el.className = `fixed bottom-4 right-4 ${colors[type] || 'bg-gray-800'} text-white px-6 py-3 rounded-lg shadow-xl z-[200] animate-slide-in`;
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    }
+
+    init();
+</script>
+
+<style>
+    @keyframes slide-in {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-slide-in {
+        animation: slide-in 0.3s ease-out;
+    }
+
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+</style>
+{% endblock %}

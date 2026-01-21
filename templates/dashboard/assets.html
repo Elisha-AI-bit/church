@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center bg-white p-6 rounded-lg shadow-sm">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Fixed Asset Register</h1>
+            <p class="text-gray-500">Track church assets, value, and depreciation</p>
+        </div>
+        <div class="space-x-2">
+            <button onclick="document.getElementById('addCategoryModal').classList.remove('hidden')"
+                class="text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100">
+                <i class="fas fa-tags mr-2"></i> Categories
+            </button>
+            <button onclick="document.getElementById('addAssetModal').classList.remove('hidden')"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                <i class="fas fa-plus mr-2"></i> Add Asset
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Assets Value (Original)</p>
+                    <h3 class="text-2xl font-bold text-gray-900 mt-2" id="totalOriginal">K0.00</h3>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg">
+                    <i class="fas fa-box text-blue-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Net Book Value (Current)</p>
+                    <h3 class="text-2xl font-bold text-gray-900 mt-2" id="totalNet">K0.00</h3>
+                </div>
+                <div class="p-3 bg-green-50 rounded-lg">
+                    <i class="fas fa-chart-line text-green-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-red-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Depreciation</p>
+                    <h3 class="text-2xl font-bold text-gray-900 mt-2" id="totalDepreciation">K0.00</h3>
+                </div>
+                <div class="p-3 bg-red-50 rounded-lg">
+                    <i class="fas fa-arrow-down text-red-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assets Table -->
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Asset List</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset
+                            Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name
+                            / Description</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Category</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acquisition Date</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Original Value</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Depr. Rate</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net
+                            Book Value</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="assetsTableBody">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Asset Modal -->
+<div id="addAssetModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Register New Asset</h3>
+            <form id="addAssetForm" class="mt-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                    <input type="text" name="name"
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Category</label>
+                    <select name="category" id="categorySelect"
+                        class="shadow border rounded w-full py-2 px-3 text-gray-700" required>
+                        <!-- Populated via JS -->
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Acquisition Date</label>
+                    <input type="date" name="acquisition_date"
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        required>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Value (K)</label>
+                        <input type="number" step="0.01" name="acquisition_value"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Depr. Rate (%)</label>
+                        <input type="number" step="0.01" name="depreciation_rate"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            value="0">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="document.getElementById('addAssetModal').classList.add('hidden')"
+                        class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save
+                        Asset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div id="addCategoryModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">Add Asset Category</h3>
+        <form id="addCategoryForm" class="mt-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Category Name</label>
+                <input type="text" name="name"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    required placeholder="e.g. Furniture, Vehicles">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Description</label>
+                <textarea name="description"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="document.getElementById('addCategoryModal').classList.add('hidden')"
+                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create
+                    Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAssets();
+        loadCategories();
+    });
+
+    async function loadAssets() {
+        try {
+            const res = await fetch('/api/finance/assets/');
+            const data = await res.json();
+            const assets = data.results || data; // Handle pagination if enabled
+
+            const tbody = document.getElementById('assetsTableBody');
+            tbody.innerHTML = '';
+
+            let totalOrig = 0;
+            let totalNet = 0;
+
+            assets.forEach(asset => {
+                totalOrig += parseFloat(asset.acquisition_value);
+                totalNet += parseFloat(asset.net_book_value);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${asset.asset_code}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${asset.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${asset.category_name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${asset.acquisition_date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">K${parseFloat(asset.acquisition_value).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">${asset.depreciation_rate}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600">K${parseFloat(asset.net_book_value).toLocaleString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('totalOriginal').textContent = 'K' + totalOrig.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            document.getElementById('totalNet').textContent = 'K' + totalNet.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            document.getElementById('totalDepreciation').textContent = 'K' + (totalOrig - totalNet).toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+        } catch (e) { console.error('Error loading assets:', e); }
+    }
+
+    async function loadCategories() {
+        try {
+            const res = await fetch('/api/finance/asset-categories/');
+            const data = await res.json();
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = '<option value="">Select Category</option>';
+            data.results.forEach(cat => {
+                select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    document.getElementById('addAssetForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const json = Object.fromEntries(formData.entries());
+
+        try {
+            const res = await fetch('/api/finance/assets/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(json)
+            });
+
+            if (res.ok) {
+                document.getElementById('addAssetModal').classList.add('hidden');
+                e.target.reset();
+                loadAssets();
+            } else {
+                alert('Error creating asset');
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    document.getElementById('addCategoryForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const json = Object.fromEntries(formData.entries());
+
+        try {
+            const res = await fetch('/api/finance/asset-categories/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(json)
+            });
+
+            if (res.ok) {
+                document.getElementById('addCategoryModal').classList.add('hidden');
+                e.target.reset();
+                loadCategories(); // Refresh dropdown
+                alert('Category created successfully!');
+            } else {
+                alert('Error creating category');
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

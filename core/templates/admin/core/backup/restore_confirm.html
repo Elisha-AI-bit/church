@@ -1,0 +1,105 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+    <h1>Restore Backup</h1>
+
+    <div class="warning-box"
+        style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+        <h2 style="color: #856404; margin-top: 0;">⚠️ Warning: This action cannot be undone!</h2>
+        <p><strong>Restoring this backup will:</strong></p>
+        <ul>
+            <li>Replace ALL current data with data from the backup</li>
+            <li>Overwrite all existing records in the database</li>
+            {% if backup.backup_type == 'full' or backup.backup_type == 'media' %}
+            <li>Replace all media files with files from the backup</li>
+            {% endif %}
+        </ul>
+        <p style="margin-bottom: 0;"><strong>An automatic backup of the current state will be created before
+                restore.</strong></p>
+    </div>
+
+    <div class="backup-info" style="background: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <h3>Backup Details:</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 8px; font-weight: bold; width: 150px;">Filename:</td>
+                <td style="padding: 8px;">{{ backup.filename }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; font-weight: bold;">Type:</td>
+                <td style="padding: 8px;">{{ backup.get_backup_type_display }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; font-weight: bold;">Created:</td>
+                <td style="padding: 8px;">{{ backup.created_at|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; font-weight: bold;">Created By:</td>
+                <td style="padding: 8px;">{{ backup.created_by|default:"Unknown" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; font-weight: bold;">Size:</td>
+                <td style="padding: 8px;">{{ backup.file_size_mb }} MB</td>
+            </tr>
+            {% if backup.notes %}
+            <tr>
+                <td style="padding: 8px; font-weight: bold; vertical-align: top;">Notes:</td>
+                <td style="padding: 8px;">{{ backup.notes }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <form method="post" class="restore-form">
+        {% csrf_token %}
+
+        <div class="form-row" style="margin: 20px 0;">
+            <label style="display: flex; align-items: center; font-size: 16px;">
+                <input type="checkbox" name="confirm" value="yes" required
+                    style="margin-right: 10px; width: 20px; height: 20px;">
+                <strong>I understand that this will replace all current data and I want to proceed with the
+                    restore.</strong>
+            </label>
+        </div>
+
+        <div class="submit-row">
+            <input type="submit" value="Restore Backup" class="default"
+                style="background: #dc3545; border-color: #dc3545;" />
+            <a href="/admin/core/backup/" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .warning-box h2 {
+        font-size: 18px;
+    }
+
+    .warning-box ul {
+        margin: 10px 0;
+    }
+
+    .warning-box li {
+        margin: 5px 0;
+    }
+
+    .backup-info h3 {
+        margin-top: 0;
+        color: #333;
+    }
+
+    .restore-form {
+        max-width: 600px;
+    }
+
+    .submit-row {
+        margin-top: 20px;
+    }
+
+    .cancel-link {
+        margin-left: 10px;
+    }
+</style>
+{% endblock %}

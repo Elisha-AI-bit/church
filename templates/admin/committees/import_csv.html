@@ -1,0 +1,44 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 40px auto;">
+    <h1>Import Committees from CSV</h1>
+
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3>Instructions:</h3>
+        <ol>
+            <li>Download the CSV template using the button on the committees list page</li>
+            <li>Fill in your committee data following the example format</li>
+            <li>Required field: <strong>name</strong></li>
+            <li>Optional fields: <strong>description</strong>, <strong>meeting_schedule</strong></li>
+            <li>Upload your completed CSV file below</li>
+        </ol>
+        <p><strong>Note:</strong> If a committee with the same name already exists, it will be updated with the new
+            information.</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data"
+        style="background: white; padding: 30px; border: 1px solid #ddd; border-radius: 8px;">
+        {% csrf_token %}
+
+        <div style="margin-bottom: 20px;">
+            <label for="csv_file" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                Select CSV File:
+            </label>
+            <input type="file" name="csv_file" id="csv_file" accept=".csv" required
+                style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%;">
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="submit"
+                style="background: #417690; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                Upload and Import
+            </button>
+            <a href="{% url 'admin:committees_committee_changelist' %}"
+                style="background: #6c757d; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; display: inline-block;">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

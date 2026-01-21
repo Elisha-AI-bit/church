@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payslip - {{ employee.full_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 30px;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .letterhead {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 4px solid #1e40af;
+            padding-bottom: 20px;
+        }
+
+        .letterhead h1 {
+            color: #1e40af;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .letterhead p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .payslip-title {
+            text-align: center;
+            background: #1e40af;
+            color: white;
+            padding: 12px;
+            margin-bottom: 25px;
+            border-radius: 6px;
+        }
+
+        .payslip-title h2 {
+            font-size: 20px;
+        }
+
+        .info-section {
+            margin-bottom: 25px;
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .info-item {}
+
+        .info-item label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .info-item span {
+            font-size: 14px;
+            color: #111;
+        }
+
+        .breakdown {
+            margin-bottom: 20px;
+        }
+
+        .breakdown h3 {
+            font-size: 16px;
+            color: #1e40af;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #bfdbfe;
+        }
+
+        .line-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .line-item:hover {
+            background: #f9fafb;
+        }
+
+        .line-item label {
+            font-size: 13px;
+            color: #374151;
+        }
+
+        .line-item span {
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            color: #111;
+        }
+
+        .line-item.total {
+            background: #eff6ff;
+            border: 2px solid #3b82f6;
+            margin-top: 10px;
+            font-weight: 700;
+        }
+
+        .line-item.total label {
+            font-size: 14px;
+            color: #1e40af;
+        }
+
+        .line-item.total span {
+            font-size: 16px;
+            color: #1e3a8a;
+        }
+
+        .net-pay-box {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .net-pay-box label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            display: block;
+            opacity: 0.9;
+        }
+
+        .net-pay-box span {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        .payment-details {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+
+        .payment-details h4 {
+            font-size: 13px;
+            color: #92400e;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .payment-details p {
+            font-size: 12px;
+            color: #78350f;
+            margin: 5px 0;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
+        }
+
+        .tax-note {
+            background: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 12px;
+            margin: 20px 0;
+            font-size: 11px;
+            color: #0c4a6e;
+        }
+
+        @media print {
+            body {
+                padding: 15px;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            @page {
+                margin: 15mm;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="letterhead">
+        <h1>United Church of Zambia</h1>
+        <p>Employee Payslip</p>
+    </div>
+
+    <div class="payslip-title">
+        <h2>Payslip for {{ period.month|date:"F Y" }}</h2>
+    </div>
+
+    <div class="info-section">
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Employee Name</label>
+                <span>{{ employee.full_name }}</span>
+            </div>
+            <div class="info-item">
+                <label>NRC Number</label>
+                <span>{{ employee.nrc_number|default:"N/A" }}</span>
+            </div>
+            <div class="info-item">
+                <label>Position</label>
+                <span>{{ employee.role }}</span>
+            </div>
+            <div class="info-item">
+                <label>Pay Period</label>
+                <span>{{ period.month|date:"F Y" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="breakdown">
+        <h3>Earnings</h3>
+        <div class="line-item">
+            <label>Basic Salary</label>
+            <span>K {{ payslip.basic_salary|floatformat:2 }}</span>
+        </div>
+        {% if payslip.housing_allowance > 0 %}
+        <div class="line-item">
+            <label>Housing Allowance</label>
+            <span>K {{ payslip.housing_allowance|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if payslip.transport_allowance > 0 %}
+        <div class="line-item">
+            <label>Transport Allowance</label>
+            <span>K {{ payslip.transport_allowance|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if payslip.education_allowance > 0 %}
+        <div class="line-item">
+            <label>Education Allowance</label>
+            <span>K {{ payslip.education_allowance|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if payslip.medical_allowance > 0 %}
+        <div class="line-item">
+            <label>Medical Allowance</label>
+            <span>K {{ payslip.medical_allowance|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if payslip.other_allowance > 0 %}
+        <div class="line-item">
+            <label>Other Allowance</label>
+            <span>K {{ payslip.other_allowance|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="line-item total">
+            <label>Gross Pay</label>
+            <span>K {{ payslip.gross_pay|floatformat:2 }}</span>
+        </div>
+    </div>
+
+    <div class="breakdown">
+        <h3>Statutory Deductions</h3>
+        <div class="line-item">
+            <label>NAPSA Pension (5%)</label>
+            <span>K {{ payslip.pension_deduction|floatformat:2 }}</span>
+        </div>
+        <div class="line-item">
+            <label>NHIMA (1% of Basic)</label>
+            <span>K {{ payslip.nhima_deduction|floatformat:2 }}</span>
+        </div>
+        <div class="line-item">
+            <label>PAYE Tax</label>
+            <span>K {{ payslip.paye_tax|floatformat:2 }}</span>
+        </div>
+        {% if payslip.other_deductions > 0 %}
+        <div class="line-item">
+            <label>Other Deductions</label>
+            <span>K {{ payslip.other_deductions|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="line-item total">
+            <label>Total Deductions</label>
+            <span>K {{ payslip.total_deductions|floatformat:2 }}</span>
+        </div>
+    </div>
+
+    <div class="breakdown">
+        <h3>Leave Accrual</h3>
+        <div class="line-item">
+            <label>Accrued Days (Cumulative)</label>
+            <span>{{ payslip.leave_days_balance|floatformat:2 }} Days</span>
+        </div>
+        <div class="line-item">
+            <label>Est. Cash Value</label>
+            <span>K {{ payslip.leave_pay_value|floatformat:2 }}</span>
+        </div>
+    </div>
+
+    <div class="net-pay-box">
+        <label>Net Pay</label>
+        <span>K {{ payslip.net_pay|floatformat:2 }}</span>
+    </div>
+
+    {% if employee.bank_name %}
+    <div class="payment-details">
+        <h4>Payment Details</h4>
+        <p><strong>Bank:</strong> {{ employee.bank_name }}</p>
+        <p><strong>Account Number:</strong> {{ employee.account_number }}</p>
+    </div>
+    {% endif %}
+
+    <div class="tax-note">
+        <strong>Tax Calculation Note:</strong> PAYE is calculated on taxable income (Gross Pay - Pension) using Zambian
+        tax bands:
+        0% up to K5,100 | 20% from K5,101-K7,100 | 30% from K7,101-K9,200 | 37% over K9,200
+    </div>
+
+    <div class="footer">
+        <p>This is a computer-generated payslip and does not require a signature.</p>
+        <p>Generated on {{ period.created_at|date:"d F Y, H:i" }}</p>
+    </div>
+
+    <div class="no-print" style="position: fixed; top: 20px; right: 20px;">
+        <button onclick="window.print()"
+            style="background: #1e40af; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+            Print Payslip
+        </button>
+        <button onclick="window.close()"
+            style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-left: 10px;">
+            Close
+        </button>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,632 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Membership Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Membership Management</h2>
+            <p class="text-gray-600">Manage church members, dependents, and positions</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="openImportModal()"
+                class="bg-white text-ucz-blue border border-ucz-blue px-6 py-3 rounded-lg hover:bg-blue-50 transition transform hover:scale-105 shadow-lg flex items-center">
+                <i class="fas fa-file-csv mr-2"></i>Import CSV
+            </button>
+            <button onclick="openAddMemberModal()"
+                class="bg-gradient-to-r from-ucz-blue to-ucz-black text-white px-6 py-3 rounded-lg hover:bg-ucz-blue/90 transition transform hover:scale-105 shadow-lg">
+                <i class="fas fa-plus mr-2"></i>Add New Member
+            </button>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Import Members from CSV</h3>
+            <p class="text-gray-600 mb-6 text-sm">
+                Upload a CSV file with columns: First Name, Last Name, Gender, Phone, Email, Status, Date of Birth,
+                Section, Position, Dependents.
+                <br><span class="text-xs italic">Dependents format: Name|Gender|DOB; Name|Gender|DOB (separated by
+                    semicolons)</span>
+                <a href="#" onclick="downloadSampleCSV(event)" class="text-ucz-blue hover:underline font-medium ml-1">
+                    <i class="fas fa-download mr-1"></i>Download Sample Template
+                </a>
+            </p>
+            <form id="importForm" onsubmit="submitImport(event)">
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">CSV File</label>
+                    <input type="file" name="file" accept=".csv" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeImportModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-ucz-blue text-white rounded-lg hover:bg-blue-900 transition flex items-center">
+                        <i class="fas fa-upload mr-2"></i> Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl p-6 shadow-lg">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <input type="text" id="searchMember" placeholder="Search members..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select id="statusFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                    <option value="">All Status</option>
+                    <option value="communicant">Communicant</option>
+                    <option value="catechumen">Catechumen</option>
+                    <option value="adherent">Adherent</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Section</label>
+                <select id="sectionFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                    <option value="">All Sections</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <select id="genderFilter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                    <option value="">All Genders</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Members Table -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Member ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Member</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Gender</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Section</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Position</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Contact</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="membersTableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- Data will be loaded via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        <div class="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+            <div class="text-sm text-gray-700">
+                Showing <span id="showingCount">0</span> members
+            </div>
+            <div id="pagination" class="flex space-x-2">
+                <!-- Pagination buttons will be added via JavaScript -->
+            </div>
+        </div>
+    </div>
+    <!-- Add Member Modal -->
+    <div id="addMemberModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+                <h3 class="text-xl font-bold text-gray-900">Add New Member</h3>
+                <button onclick="closeAddMemberModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form id="addMemberForm" onsubmit="submitMemberForm(event)" class="p-6 space-y-8">
+                <!-- Personal Information -->
+                <div>
+                    <h4 class="text-lg font-semibold text-ucz-blue mb-4 border-b border-gray-200 pb-2">Personal
+                        Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                            <input type="text" name="first_name" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                            <input type="text" name="middle_name"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                            <input type="text" name="last_name" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                            <select name="gender" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                                <option value="">Select Gender</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                            <input type="date" name="date_of_birth" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div>
+                    <h4 class="text-lg font-semibold text-ucz-blue mb-4 border-b border-gray-200 pb-2">Contact
+                        Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <input type="tel" name="phone"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <input type="email" name="email"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Residential Address *</label>
+                            <textarea name="address" required rows="2"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent"></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Place of Work/School</label>
+                            <input type="text" name="place_of_work"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Church Information -->
+                <div>
+                    <h4 class="text-lg font-semibold text-ucz-blue mb-4 border-b border-gray-200 pb-2">Church
+                        Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Section *</label>
+                            <select name="section" id="modalSectionSelect" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                                <option value="">Select Section</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Membership Status *</label>
+                            <select name="membership_status" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                                <option value="communicant">Communicant (Full Member)</option>
+                                <option value="catechumen">Catechumen</option>
+                                <option value="adherent">Adherent</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date Joined *</label>
+                            <input type="date" name="date_joined" required id="dateJoinedInput"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Current Positions</label>
+                            <select name="current_positions" id="modalPositionsSelect" multiple
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent h-10 overflow-y-auto">
+                            </select>
+                            <p class="text-[10px] text-gray-500 mt-1">Hold Ctrl (Cmd) to select multiple</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dependents Information -->
+                <div>
+                    <h4
+                        class="text-lg font-semibold text-ucz-blue mb-4 border-b border-gray-200 pb-2 flex justify-between items-center">
+                        <span>Dependents / Family Members</span>
+                        <button type="button" onclick="addDependentRow()"
+                            class="text-sm bg-blue-50 text-ucz-blue px-3 py-1 rounded-lg hover:bg-blue-100 transition">
+                            <i class="fas fa-plus mr-1"></i> Add Dependent
+                        </button>
+                    </h4>
+                    <div id="dependentsContainer" class="space-y-4">
+                        <!-- Dependent rows will be added here -->
+                    </div>
+                    <p id="noDependentsMsg" class="text-sm text-gray-500 italic mt-2">No dependents added yet.</p>
+                </div>
+
+                <div class="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                    <button type="button" onclick="closeAddMemberModal()"
+                        class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-6 py-2 bg-gradient-to-r from-ucz-blue to-ucz-black text-white rounded-lg hover:bg-ucz-blue/90 transition shadow-lg flex items-center">
+                        <i class="fas fa-save mr-2"></i> Save Member
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load members data
+    async function loadMembers(page = 1) {
+        try {
+            const search = document.getElementById('searchMember').value;
+            const status = document.getElementById('statusFilter').value;
+            const section = document.getElementById('sectionFilter').value;
+            const gender = document.getElementById('genderFilter').value;
+
+            let url = `/api/membership/members/?page=${page}`;
+            if (search) url += `&search=${search}`;
+            if (status) url += `&membership_status=${status}`;
+            if (section) url += `&section=${section}`;
+            if (gender) url += `&gender=${gender}`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            displayMembers(data.results);
+            document.getElementById('showingCount').textContent = data.results.length;
+        } catch (error) {
+            console.error('Error loading members:', error);
+        }
+    }
+
+    function displayMembers(members) {
+        const tbody = document.getElementById('membersTableBody');
+        tbody.innerHTML = members.map(member => `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm font-bold text-gray-900">${member.membership_number || '-'}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-ucz-blue rounded-full flex items-center justify-center text-white font-bold">
+                            ${member.full_name.charAt(0)}
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${member.full_name}</div>
+                            <div class="text-sm text-gray-500">Age: ${member.age}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm text-gray-900">${member.gender === 'M' ? 'Male' : 'Female'}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm text-gray-900">${member.section_name || 'N/A'}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(member.membership_status)}">
+                        ${member.membership_status}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${member.position_names || 'N/A'}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${member.phone || 'N/A'}</div>
+                    <div class="text-sm text-gray-500">${member.email || 'N/A'}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="viewMember(${member.id})" class="text-ucz-blue hover:text-blue-900 mr-3">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="editMember(${member.id})" class="text-ucz-blue hover:text-blue-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteMember(${member.id})" class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'communicant': 'bg-green-100 text-green-800',
+            'catechumen': 'bg-yellow-100 text-yellow-800',
+            'adherent': 'bg-blue-100 text-blue-800'
+        };
+        return colors[status] || 'bg-gray-100 text-gray-800';
+    }
+
+    function openAddMemberModal() {
+        const modal = document.getElementById('addMemberModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Set default date joined to today
+        document.getElementById('dateJoinedInput').valueAsDate = new Date();
+
+        // Populate sections if empty
+        const select = document.getElementById('modalSectionSelect');
+        if (select.options.length <= 1) {
+            const filterSelect = document.getElementById('sectionFilter');
+            // Copy options from filter, skipping the "All Sections" one
+            Array.from(filterSelect.options).slice(1).forEach(opt => {
+                select.add(new Option(opt.text, opt.value));
+            });
+        }
+    }
+
+    function closeAddMemberModal() {
+        const modal = document.getElementById('addMemberModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('addMemberForm').reset();
+
+        // Clear dependents
+        document.getElementById('dependentsContainer').innerHTML = '';
+        const noMsg = document.getElementById('noDependentsMsg');
+        if (noMsg) noMsg.style.display = 'block';
+    }
+
+    function addDependentRow() {
+        const container = document.getElementById('dependentsContainer');
+        const noMsg = document.getElementById('noDependentsMsg');
+        if (noMsg) noMsg.style.display = 'none';
+
+        const rowId = Date.now();
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-1 md:grid-cols-5 gap-4 bg-gray-50 p-4 rounded-lg relative dependent-row';
+        row.dataset.id = rowId;
+
+        row.innerHTML = `
+            <div class="md:col-span-1">
+                <input type="text" placeholder="First Name" required class="dep-fname w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent text-sm">
+            </div>
+            <div class="md:col-span-1">
+                <input type="text" placeholder="Last Name" required class="dep-lname w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent text-sm">
+            </div>
+            <div class="md:col-span-1">
+                <select class="dep-gender w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent text-sm">
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                </select>
+            </div>
+            <div class="md:col-span-1">
+                <input type="date" required class="dep-dob w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent text-sm">
+            </div>
+            <div class="md:col-span-1 flex items-center">
+                <select class="dep-status w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ucz-blue focus:border-transparent text-sm mr-2">
+                    <option value="child">Child</option>
+                    <option value="communicant">Communicant</option>
+                    <option value="catechumen">Catechumen</option>
+                </select>
+                <button type="button" onclick="removeDependentRow(${rowId})" class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+    }
+
+    function removeDependentRow(id) {
+        const row = document.querySelector(`.dependent-row[data-id="${id}"]`);
+        if (row) row.remove();
+
+        const container = document.getElementById('dependentsContainer');
+        if (container.children.length === 0) {
+            document.getElementById('noDependentsMsg').style.display = 'block';
+        }
+    }
+
+    async function submitMemberForm(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        // Handle multi-select positions
+        const positionSelect = document.getElementById('modalPositionsSelect');
+        const selectedPositions = Array.from(positionSelect.selectedOptions).map(option => option.value);
+        data.current_positions = selectedPositions;
+
+        // Collect dependents data
+        const dependents = [];
+        document.querySelectorAll('.dependent-row').forEach(row => {
+            dependents.push({
+                first_name: row.querySelector('.dep-fname').value,
+                last_name: row.querySelector('.dep-lname').value,
+                gender: row.querySelector('.dep-gender').value,
+                date_of_birth: row.querySelector('.dep-dob').value,
+                membership_status: row.querySelector('.dep-status').value
+            });
+        });
+
+        if (dependents.length > 0) {
+            data.dependents = dependents;
+        }
+
+        try {
+            const response = await fetch('/api/membership/members/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Member added successfully!');
+                closeAddMemberModal();
+                loadMembers(); // Refresh list
+            } else {
+                const errorData = await response.json();
+                alert('Error adding member: ' + JSON.stringify(errorData));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to add member. Please try again.');
+        }
+    }
+
+    // Helper to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function openImportModal() {
+        document.getElementById('importModal').classList.remove('hidden');
+        document.getElementById('importModal').classList.add('flex');
+    }
+
+    function closeImportModal() {
+        document.getElementById('importModal').classList.add('hidden');
+        document.getElementById('importModal').classList.remove('flex');
+        document.getElementById('importForm').reset();
+    }
+
+    function downloadSampleCSV(event) {
+        event.preventDefault();
+        const headers = ['First Name', 'Last Name', 'Middle Name', 'Gender', 'Phone', 'Email', 'Address', 'Status', 'Date of Birth', 'Date Joined', 'Section', 'Position', 'Dependents'];
+        const sampleRow = ['John', 'Doe', 'P', 'M', '0977000000', 'john@example.com', '123 Main St', 'communicant', '1990-01-01', '2024-01-01', 'St Peters', 'Choir Member', 'Jane Doe|F|2010-05-20; Jimmy Doe|M|2015-10-10'];
+
+        const csvContent = [
+            headers.join(','),
+            sampleRow.join(',')
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'ucz_members_import_template.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+
+    async function submitImport(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+
+        try {
+            const response = await fetch('/api/membership/members/import_csv/', { // Ensure trailing slash if needed
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert(`Import successful! Added ${data.imported} members.`);
+                closeImportModal();
+                loadMembers();
+            } else {
+                alert('Import failed: ' + (data.error || JSON.stringify(data.errors)));
+            }
+        } catch (error) {
+            console.error('Error importing:', error);
+            alert('Failed to import file.');
+        }
+    }
+
+    function viewMember(id) {
+        window.location.href = `/admin/membership/member/${id}/change/`;
+    }
+
+    function editMember(id) {
+        window.location.href = `/admin/membership/member/${id}/change/`;
+    }
+
+    function deleteMember(id) {
+        if (confirm('Are you sure you want to delete this member?')) {
+            // Implement delete functionality
+        }
+    }
+
+    // Load sections for filter
+    async function loadSections() {
+        try {
+            const response = await fetch('/api/membership/sections/');
+            const data = await response.json();
+            const select = document.getElementById('sectionFilter');
+            data.results.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section.id;
+                option.textContent = section.name;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading sections:', error);
+        }
+    }
+
+    async function loadPositions() {
+        try {
+            const response = await fetch('/api/membership/positions/');
+            const data = await response.json();
+            const select = document.getElementById('modalPositionsSelect');
+            data.results.forEach(pos => {
+                const option = document.createElement('option');
+                option.value = pos.id;
+                option.textContent = pos.title;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading positions:', error);
+        }
+    }
+
+    // Event listeners
+    document.getElementById('searchMember').addEventListener('input', () => loadMembers());
+    document.getElementById('statusFilter').addEventListener('change', () => loadMembers());
+    document.getElementById('sectionFilter').addEventListener('change', () => loadMembers());
+    document.getElementById('genderFilter').addEventListener('change', () => loadMembers());
+
+    // Initial load
+    loadMembers();
+    loadSections();
+    loadPositions();
+</script>
+{% endblock %}

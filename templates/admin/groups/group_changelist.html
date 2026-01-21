@@ -1,0 +1,15 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+<li>
+    <a href="{% url 'admin:group_download_template' %}" class="button">
+        Download CSV Template
+    </a>
+</li>
+<li>
+    <a href="{% url 'admin:group_import_csv' %}" class="button">
+        Import from CSV
+    </a>
+</li>
+{{ block.super }}
+{% endblock %}

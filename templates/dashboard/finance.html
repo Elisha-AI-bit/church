@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Finance Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Finance Management</h2>
+            <p class="text-gray-600">Track income, expenses, and remittances</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="openAddIncomeModal()"
+                class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition shadow-lg">
+                <i class="fas fa-plus mr-2"></i>Add Income
+            </button>
+            <button onclick="openAddExpenseModal()"
+                class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition shadow-lg">
+                <i class="fas fa-minus mr-2"></i>Add Expense
+            </button>
+        </div>
+    </div>
+
+    <!-- Finance Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-arrow-down text-green-600 text-xl"></i>
+                </div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-medium mb-1">Total Income</h3>
+            <p class="text-3xl font-bold text-gray-900" id="totalIncome">K0.00</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-arrow-up text-red-600 text-xl"></i>
+                </div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-medium mb-1">Total Expenses</h3>
+            <p class="text-3xl font-bold text-gray-900" id="totalExpenses">K0.00</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-wallet text-blue-600 text-xl"></i>
+                </div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-medium mb-1">Net Balance</h3>
+            <p class="text-3xl font-bold text-blue-900" id="netBalance">K0.00</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-exchange-alt text-orange-600 text-xl"></i>
+                </div>
+            </div>
+            <h3 class="text-gray-500 text-sm font-medium mb-1">Pending Remittances</h3>
+            <p class="text-3xl font-bold text-orange-900" id="pendingRemittances">K0.00</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="bg-white rounded-xl shadow-lg">
+        <div class="border-b border-gray-200">
+            <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                <button onclick="switchTab('income')" id="incomeTab"
+                    class="tab-button border-b-2 border-ucz-blue py-4 px-1 text-sm font-medium text-ucz-blue">
+                    Income Transactions
+                </button>
+                <button onclick="switchTab('expenses')" id="expensesTab"
+                    class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    Expense Transactions
+                </button>
+                <button onclick="switchTab('remittances')" id="remittancesTab"
+                    class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    Remittances
+                </button>
+                <button onclick="switchTab('accounts')" id="accountsTab"
+                    class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    Bank Accounts
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="tabContent" class="p-6">
+            <!-- Content will be loaded via JavaScript -->
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentTab = 'income';
+
+    async function loadFinanceSummary() {
+        try {
+            const incomeResponse = await fetch('/api/finance/income/summary/');
+            const incomeData = await incomeResponse.json();
+            document.getElementById('totalIncome').textContent = `K${incomeData.total_income.toFixed(2)}`;
+
+            const expenseResponse = await fetch('/api/finance/expenses/summary/');
+            const expenseData = await expenseResponse.json();
+            document.getElementById('totalExpenses').textContent = `K${expenseData.total_expense.toFixed(2)}`;
+
+            const netBalance = incomeData.total_income - expenseData.total_expense;
+            document.getElementById('netBalance').textContent = `K${netBalance.toFixed(2)}`;
+
+            const remittanceResponse = await fetch('/api/finance/remittances/summary/');
+            const remittanceData = await remittanceResponse.json();
+            document.getElementById('pendingRemittances').textContent = `K${remittanceData.unpaid_remittances.toFixed(2)}`;
+        } catch (error) {
+            console.error('Error loading finance summary:', error);
+        }
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+
+        // Update tab buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('border-ucz-blue', 'text-ucz-blue');
+            btn.classList.add('border-transparent', 'text-gray-500');
+        });
+
+        const activeTab = document.getElementById(`${tab}Tab`);
+        activeTab.classList.add('border-ucz-blue', 'text-ucz-blue');
+        activeTab.classList.remove('border-transparent', 'text-gray-500');
+
+        // Load tab content
+        loadTabContent(tab);
+    }
+
+    async function loadTabContent(tab) {
+        const content = document.getElementById('tabContent');
+
+        if (tab === 'income') {
+            content.innerHTML = '<p class="text-gray-500">Loading income transactions...</p>';
+            try {
+                const response = await fetch('/api/finance/income/');
+                const data = await response.json();
+                displayIncomeTable(data.results);
+            } catch (error) {
+                content.innerHTML = '<p class="text-red-500">Error loading income data</p>';
+            }
+        } else if (tab === 'expenses') {
+            content.innerHTML = '<p class="text-gray-500">Loading expense transactions...</p>';
+            try {
+                const response = await fetch('/api/finance/expenses/');
+                const data = await response.json();
+                displayExpenseTable(data.results);
+            } catch (error) {
+                content.innerHTML = '<p class="text-red-500">Error loading expense data</p>';
+            }
+        } else if (tab === 'remittances') {
+            content.innerHTML = '<p class="text-gray-500">Loading remittances...</p>';
+            try {
+                const response = await fetch('/api/finance/remittances/');
+                const data = await response.json();
+                displayRemittanceTable(data.results);
+            } catch (error) {
+                content.innerHTML = '<p class="text-red-500">Error loading remittance data</p>';
+            }
+        } else if (tab === 'accounts') {
+            content.innerHTML = '<p class="text-gray-500">Loading bank accounts...</p>';
+            try {
+                const response = await fetch('/api/finance/bank-accounts/');
+                const data = await response.json();
+                displayBankAccounts(data.results);
+            } catch (error) {
+                content.innerHTML = '<p class="text-red-500">Error loading bank accounts</p>';
+            }
+        }
+    }
+
+    function displayIncomeTable(items) {
+        const content = document.getElementById('tabContent');
+        content.innerHTML = `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bank Account</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${items.map(item => `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.transaction_date}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.category_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.bank_account_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.payer_name || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">K${parseFloat(item.amount).toFixed(2)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button class="text-ucz-blue hover:text-blue-900"><i class="fas fa-eye"></i></button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function displayExpenseTable(items) {
+        const content = document.getElementById('tabContent');
+        content.innerHTML = `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bank Account</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payee</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${items.map(item => `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.transaction_date}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.category_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.bank_account_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.payee_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">K${parseFloat(item.amount).toFixed(2)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button class="text-ucz-blue hover:text-blue-900"><i class="fas fa-eye"></i></button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function displayRemittanceTable(items) {
+        const content = document.getElementById('tabContent');
+        content.innerHTML = `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${items.map(item => `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.remittance_setting_name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-600">K${parseFloat(item.amount).toFixed(2)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.percentage_used}%</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${item.paid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                        ${item.paid ? 'Paid' : 'Pending'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    ${!item.paid ? '<button class="text-green-600 hover:text-green-900"><i class="fas fa-check"></i> Mark Paid</button>' : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function displayBankAccounts(accounts) {
+        const content = document.getElementById('tabContent');
+        content.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${accounts.map(account => `
+                    <div class="gradient-primary rounded-xl p-6 text-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <i class="fas fa-university text-2xl text-white/70"></i>
+                            <span class="text-xs bg-white/20 px-2 py-1 rounded-full">${account.account_type_display}</span>
+                        </div>
+                        <p class="text-sm text-white/80 mb-2">${account.bank_name}</p>
+                        <p class="text-3xl font-bold mb-1">K${parseFloat(account.current_balance).toFixed(2)}</p>
+                        <p class="text-xs text-white/70">${account.account_name}</p>
+                        <p class="text-xs text-white/50 mt-2">${account.account_number}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function openAddIncomeModal() {
+        window.location.href = '/admin/finance/income/add/';
+    }
+
+    function openAddExpenseModal() {
+        window.location.href = '/admin/finance/expense/add/';
+    }
+
+    // Initial load
+    loadFinanceSummary();
+    loadTabContent('income');
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+    <h1>Create Backup</h1>
+
+    <form method="post" class="backup-form">
+        {% csrf_token %}
+
+        <div class="form-row">
+            <div>
+                <label for="backup_type">Backup Type:</label>
+                <select name="backup_type" id="backup_type" required>
+                    <option value="full">Full Backup (Database + Media)</option>
+                    <option value="database">Database Only</option>
+                    <option value="media">Media Files Only</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label for="notes">Notes (Optional):</label>
+                <textarea name="notes" id="notes" rows="4" cols="50"
+                    placeholder="Add any notes about this backup..."></textarea>
+            </div>
+        </div>
+
+        <div class="submit-row">
+            <input type="submit" value="Create Backup" class="default" />
+            <a href="/admin/core/backup/" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+
+    <div class="help-text"
+        style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-left: 4px solid #007bff;">
+        <h3>Backup Types:</h3>
+        <ul>
+            <li><strong>Full Backup:</strong> Includes both database and media files (recommended)</li>
+            <li><strong>Database Only:</strong> Only backs up the database structure and data</li>
+            <li><strong>Media Files Only:</strong> Only backs up uploaded files and images</li>
+        </ul>
+        <p><strong>Note:</strong> The system automatically keeps the last 10 backups and removes older ones.</p>
+    </div>
+</div>
+
+<style>
+    .backup-form {
+        max-width: 600px;
+        margin: 20px 0;
+    }
+
+    .form-row {
+        margin-bottom: 20px;
+    }
+
+    .form-row label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .form-row select,
+    .form-row textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    .help-text {
+        border-radius: 4px;
+    }
+
+    .help-text h3 {
+        margin-top: 0;
+        color: #007bff;
+    }
+
+    .help-text ul {
+        margin: 10px 0;
+    }
+
+    .help-text li {
+        margin: 5px 0;
+    }
+</style>
+{% endblock %}
