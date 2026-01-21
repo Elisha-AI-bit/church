@@ -1,19 +1,24 @@
 ---
 deployment:
   tasks:
-    # Set the deploy path
+    # Set the path to your project
     - export DEPLOYPATH=/home/uczsilve/repositories/church
 
-    # Activate virtual environment (create if it doesn't exist)
+    # Create virtual environment if it doesn't exist
     - if [ ! -d /home/uczsilve/venv ]; then python3 -m venv /home/uczsilve/venv; fi
+
+    # Activate the virtual environment
     - source /home/uczsilve/venv/bin/activate
 
     # Upgrade pip and install dependencies
     - pip install --upgrade pip
     - pip install -r $DEPLOYPATH/requirements.txt
 
-    # Apply database migrations
+    # Apply Django database migrations
     - python $DEPLOYPATH/manage.py migrate
 
-    # Collect static files
+    # Collect static files for Django
     - python $DEPLOYPATH/manage.py collectstatic --noinput
+
+    # Optional: restart Passenger (if using passenger_wsgi)
+    - touch $DEPLOYPATH/passenger_wsgi.py
